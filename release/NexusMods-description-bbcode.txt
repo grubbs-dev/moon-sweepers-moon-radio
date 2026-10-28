@@ -1,0 +1,90 @@
+[size=5][b]Moon Radio[/b][/size]
+
+Bring shared internet radio to Moon Sweepers stations and vehicles.
+
+Moon Radio adds a native-styled [b]RADIO R[/b] shortcut to the game's HUD. Press [b]R[/b] to open an in-game radio panel, choose a station by genre, search for a station, or paste a direct HTTPS MP3 stream. Radio audio is positional, allowing nearby players to hear the same station from its station or vehicle emitter.
+
+[size=4][b]Features[/b][/size]
+
+[list]
+[*]In-game radio panel matching the Moon Sweepers interface style.
+[*][b]R[/b] radio shortcut inside stations.
+[*][b]R[/b] radio shortcut while seated in eligible vehicles.
+[*]Internet radio station and genre discovery.
+[*]Direct HTTPS MP3 stream support.
+[*]Independent radio state for every station and eligible vehicle.
+[*]Station audio range of 200 metres.
+[*]Vehicle audio audible from outside up to 15 metres away.
+[*]Multiplayer synchronization for station identity and playback state.
+[*]Separate stations and vehicles can play different radios.
+[*]No external music player window required.
+[*]No video playback required.
+[*]Push mowers are excluded from vehicle radio controls.
+[/list]
+
+[size=4][b]Controls[/b][/size]
+
+[list]
+[*][b]Open radio:[/b] R
+[*][b]Choose a genre:[/b] Select a genre button
+[*][b]Search for stations:[/b] Enter a name or genre, then select SEARCH / PLAY
+[*][b]Use a direct stream:[/b] Paste an HTTPS MP3 stream URL
+[*][b]Stop the radio:[/b] STOP THIS RADIO
+[*][b]Adjust volume:[/b] VOL - / VOL +
+[*][b]Close the panel:[/b] CLOSE
+[/list]
+
+[size=4][b]Installation[/b][/size]
+
+1. Close Moon Sweepers.
+2. Install BepInEx and the MoonSweepers BepInEx Patcher.
+3. Extract the archive into the folder containing MoonSweepers.exe.
+4. Confirm the DLL is located at:
+
+[code]BepInEx/plugins/MoonRadio/MoonRadio.dll[/code]
+
+5. Launch Moon Sweepers.
+6. Enter a station or eligible vehicle and press R.
+
+Do not install multiple copies of MoonRadio.dll. For updates, remove the old BepInEx/plugins/MoonRadio folder first.
+
+[size=4][b]Requirements[/b][/size]
+
+[list]
+[*]Moon Sweepers 1.0.5, Windows x64
+[*]BepInEx 6.0.0-be.791 Unity IL2CPP win-x64
+[*]MoonSweepers BepInEx Patcher
+[*]Internet connection for station discovery and streaming
+[/list]
+
+[size=4][b]Multiplayer[/b][/size]
+
+Moon Radio synchronizes the radio emitter rather than transmitting music data between players. Each listener fetches the selected stream locally.
+
+All players who want to hear synchronized radio need Moon Radio installed. Players may hear different audio if a station is unavailable in their region or blocked by their network.
+
+Station radios are audible within 200 metres. Vehicle radios are audible from outside the vehicle within 15 metres.
+
+[size=4][b]Troubleshooting[/b][/size]
+
+If the RADIO R shortcut is missing, verify the DLL path, remove duplicate copies, and restart the game.
+
+If pressing R does nothing, close other menus and make sure the game window is focused.
+
+If a station does not play, try another station or genre. Direct URLs must point to an HTTPS MP3 stream, not a normal YouTube, Spotify, Apple Music, or webpage URL.
+
+For multiplayer, all players need the mod installed and must be within the radio emitter's range.
+
+[size=4][b]Known limitations[/b][/size]
+
+[list]
+[*]Normal YouTube, Spotify, and Apple Music links are not direct audio stream URLs.
+[*]Internet radio stations may go offline or change formats.
+[*]Each multiplayer listener downloads the stream independently.
+[/list]
+
+[size=4][b]Credits and permissions[/b][/size]
+
+Moon Radio is an unofficial community mod for Moon Sweepers, created with permission from the game's creators.
+
+Moon Sweepers, BepInEx, Il2CppInterop, NLayer, and the MoonSweepers BepInEx Patcher belong to their respective creators. Please respect the terms and licensing of any internet radio station you choose to play.
