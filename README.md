@@ -7,6 +7,7 @@ Moon Radio adds shared internet radio to Moon Sweepers stations and eligible veh
 - Independent radio state per station and vehicle.
 - Positional multiplayer audio with a 200 m station range and 15 m vehicle range.
 - Native-styled `RADIO R` shortcut that follows the vehicle HUD.
+- The shortcut hides while another station interaction, such as the bed, whiteboard, or Moon Map, is open.
 
 The ready-to-install package is in [`release/`](release/). Marketing assets are in [`media/`](media/).
 

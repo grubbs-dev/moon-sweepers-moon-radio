@@ -49,7 +49,11 @@ internal static class RadioRuntime
             if(!TryCreateNativeHint())return;
         }
         RehomeHintToLiveCanvas();
-        if(Context!=null && panel?.IsOpen!=true)
+        // The game's station interactions (bed, whiteboard, Moon Map, etc.)
+        // set uiBlocked while their screen owns the prompt layer. Keep the
+        // cloned RADIO shortcut in that same lifecycle so it cannot linger
+        // over another interaction until the player leaves the station.
+        if(Context!=null && panel?.IsOpen!=true && !Walker.uiBlocked)
         {
             SetHintActive(true);
         }
