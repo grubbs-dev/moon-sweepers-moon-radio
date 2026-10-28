@@ -15,7 +15,7 @@ internal static class StationDirectory
     public static async Task<StationChoice[]> Search(string query,bool genre)
     {
         using var http=new HttpClient(){Timeout=TimeSpan.FromSeconds(15)};
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("MoonSweepers-MoonRadio/0.1.0");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("MoonSweepers-MoonRadio/0.1.1");
         string filter=string.IsNullOrWhiteSpace(query)?"":$"&{(genre?"tag":"name")}={Uri.EscapeDataString(query.Trim())}";
         Exception failure=null;
         foreach(var host in new[]{"de1.api.radio-browser.info","nl1.api.radio-browser.info"})

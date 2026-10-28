@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace MoonSweepers.MoonRadio;
 
-[BepInPlugin("moon-sweepers.moon-radio", "Moon Radio", "0.1.0")]
+[BepInPlugin("moon-sweepers.moon-radio", "Moon Radio", "0.1.1")]
 public sealed class Plugin : BasePlugin
 {
     internal static BepInEx.Logging.ManualLogSource Logger;

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Bugfix release: hide the RADIO shortcut while another station interaction screen owns the HUD prompt layer.
+
 ## 0.1.0
 
 - Initial public release.

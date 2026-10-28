@@ -29,7 +29,7 @@ public sealed class LiveStream : IDisposable
         try
         {
             using var client=new HttpClient(){Timeout=Timeout.InfiniteTimeSpan};
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("MoonSweepers-MoonRadio/0.1.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("MoonSweepers-MoonRadio/0.1.1");
             using var headersTimeout=CancellationTokenSource.CreateLinkedTokenSource(cancel.Token);
             headersTimeout.CancelAfter(TimeSpan.FromSeconds(20));
             using var response=await client.GetAsync(endpoint,HttpCompletionOption.ResponseHeadersRead,headersTimeout.Token);

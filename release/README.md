@@ -1,4 +1,4 @@
-# Moon Radio 0.1.0
+# Moon Radio 0.1.1
 
 Adds in-game internet radio to Moon Sweepers stations and eligible vehicles.
 
