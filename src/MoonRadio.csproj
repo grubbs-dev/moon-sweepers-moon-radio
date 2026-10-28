@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><GameDir>D:\Moon Sweepers Modding\Modded-1.0.5</GameDir></PropertyGroup>
+ <ItemGroup>
+ <Reference Include="0Harmony" HintPath="$(GameDir)/BepInEx/core/0Harmony.dll" Private="false" />
+ <Reference Include="Il2CppInterop.Runtime" HintPath="$(GameDir)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+ <Reference Include="Assembly-CSharp" HintPath="$(GameDir)/BepInEx/interop/Assembly-CSharp.dll" Private="false" />
+ <Reference Include="Il2Cppmscorlib" HintPath="$(GameDir)/BepInEx/interop/Il2Cppmscorlib.dll" Private="false" />
+ <Reference Include="Il2CppSystem" HintPath="$(GameDir)/BepInEx/interop/Il2CppSystem.dll" Private="false" />
+ <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDir)/BepInEx/interop/UnityEngine.CoreModule.dll" Private="false" />
+ <Reference Include="UnityEngine.AudioModule" HintPath="$(GameDir)/BepInEx/interop/UnityEngine.AudioModule.dll" Private="false" />
+ <Reference Include="UnityEngine.UI" HintPath="$(GameDir)/BepInEx/interop/UnityEngine.UI.dll" Private="false" />
+ <Reference Include="UnityEngine.UIModule" HintPath="$(GameDir)/BepInEx/interop/UnityEngine.UIModule.dll" Private="false" />
+ <Reference Include="Unity.TextMeshPro" HintPath="$(GameDir)/BepInEx/interop/Unity.TextMeshPro.dll" Private="false" />
+ <Reference Include="Unity.InputSystem" HintPath="$(GameDir)/BepInEx/interop/Unity.InputSystem.dll" Private="false" />
+ <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(GameDir)/BepInEx/interop/com.rlabrecque.steamworks.net.dll" Private="false" />
+ </ItemGroup>
+ <ItemGroup><Compile Remove="Player/**;SmokeTest/**" /></ItemGroup>
+ <ItemGroup><Reference Include="BepInEx.Core" HintPath="D:\Moon Sweepers Modding\Modded-1.0.5\BepInEx\core\BepInEx.Core.dll" Private="false" /><Reference Include="BepInEx.Unity.IL2CPP" HintPath="D:\Moon Sweepers Modding\Modded-1.0.5\BepInEx\core\BepInEx.Unity.IL2CPP.dll" Private="false" /></ItemGroup>
+ <ItemGroup>
+   <PackageReference Include="NLayer" Version="1.16.0" />
+ </ItemGroup>
+</Project>
