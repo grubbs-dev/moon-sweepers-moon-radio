@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace MoonSweepers.MoonRadio;
 internal static class RadioRuntime
@@ -20,6 +21,9 @@ internal static class RadioRuntime
     static TMP_Text hintKey;
     static RadioPanel panel;
     static float nextScan;
+    static float hintFallbackAt;
+    static bool rWasDown;
+    static bool hintUsesNativeParent;
     static bool described;
     static bool tested;
     static string lastContextDiagnostic;
@@ -46,25 +50,39 @@ internal static class RadioRuntime
             // not permanently fall back during that short window: doing so
             // produces the mismatched radio row users see before the native
             // controls become discoverable.
-            if(!TryCreateNativeHint())return;
+            if(!TryCreateNativeHint())
+            {
+                // Some game builds/locales do not expose the native action
+                // row with the English text used by the original clone path.
+                // Keep looking briefly for the native row, then provide a
+                // self-contained hint so the feature is still discoverable.
+                if(hintFallbackAt==0)hintFallbackAt=Time.unscaledTime+2f;
+                if(Time.unscaledTime<hintFallbackAt)return;
+                CreateFallbackHint();
+            }
         }
         RehomeHintToLiveCanvas();
         // The game's station interactions (bed, whiteboard, Moon Map, etc.)
         // set uiBlocked while their screen owns the prompt layer. Keep the
         // cloned RADIO shortcut in that same lifecycle so it cannot linger
         // over another interaction until the player leaves the station.
-        if(Context!=null && panel?.IsOpen!=true && !Walker.uiBlocked)
+        // Native shortcut hints are hidden by the pause menu. MoonWalker.uiBlocked
+        // is not sufficient here because the pause overlay owns its own input
+        // lifecycle, so follow the pause menu's explicit IsOpen state as well.
+        var pauseMenu=Walker.PauseMenu;
+        var paused=pauseMenu!=null && pauseMenu.IsOpen;
+        if(Context!=null && panel?.IsOpen!=true && !Walker.uiBlocked && !paused)
         {
             SetHintActive(true);
         }
         else SetHintActive(false);
         var keyboard=Keyboard.current;
-        bool radioPressed=(GetAsyncKeyState(0x52)&1)!=0 || keyboard!=null&&keyboard.rKey.wasPressedThisFrame;
-        if(Application.isFocused && keyboard!=null)
+        bool radioPressed=RadioKeyPressed(keyboard);
+        if(Application.isFocused)
         {
             if(panel?.IsOpen==true)
             {
-                if(keyboard.escapeKey.wasPressedThisFrame)panel.Close();
+                if(keyboard!=null && keyboard.escapeKey.wasPressedThisFrame)panel.Close();
             }
             else if(Context!=null && !MoonInput.Typing && radioPressed)
             {
@@ -84,7 +102,7 @@ internal static class RadioRuntime
     {
         if(hintRoot==null)return;
         TMP_Text field=null;
-        foreach(var text in UnityEngine.Object.FindObjectsOfType<TMP_Text>())
+        foreach(var text in ActiveHudTexts())
             if(string.Equals(text.text,"FIELD MANUAL",StringComparison.OrdinalIgnoreCase)){field=text;break;}
         var canvas=field?.GetComponentInParent<Canvas>();
         if(canvas==null)
@@ -92,19 +110,33 @@ internal static class RadioRuntime
                 .Where(c=>c.isActiveAndEnabled)
                 .OrderByDescending(c=>c.sortingOrder)
                 .FirstOrDefault();
-        if(canvas!=null && hintRoot.transform.parent!=canvas.transform)
+        if(!hintUsesNativeParent && canvas!=null && hintRoot.transform.parent!=canvas.transform)
             hintRoot.transform.SetParent(canvas.transform,true);
     }
     static bool TryCreateNativeHint()
     {
-        TMP_Text field=null,key=null;
-        foreach(var text in UnityEngine.Object.FindObjectsOfType<TMP_Text>())
+        Component field=null,key=null;
+        foreach(var text in ActiveHudTextComponents())
         {
-            if(field==null && string.Equals(text.text,"FIELD MANUAL",StringComparison.OrdinalIgnoreCase))field=text;
-            else if(key==null && string.Equals(text.text,"H",StringComparison.OrdinalIgnoreCase))key=text;
+            var value=HudToken(ReadHudText(text));
+            if(field==null && value.Contains("FIELDMANUAL",StringComparison.OrdinalIgnoreCase))field=text;
+            else if(key==null && value.Equals("H",StringComparison.OrdinalIgnoreCase))key=text;
         }
-        if(field==null||key==null||key.transform.parent==null)return false;
-        var sourceRow=key.transform.parent.gameObject;
+        if(field==null||key==null||key.transform.parent==null)
+        {
+            var candidates=string.Join(" | ",ActiveHudTextComponents()
+                .Select(text=>$"{text.name}='{ReadHudText(text)}'")
+                .Where(value=>value.Contains("FIELD",StringComparison.OrdinalIgnoreCase)||value.EndsWith("='H'",StringComparison.OrdinalIgnoreCase))
+                .Take(20));
+            Plugin.Logger.LogWarning($"Native HUD row lookup failed: field={(field!=null)}, key={(key!=null)}, candidates={candidates}");
+            return false;
+        }
+        var sourceTransform=key.transform.parent;
+        for(var ancestor=key.transform.parent; ancestor!=null; ancestor=ancestor.parent)
+        {
+            if(field.transform.IsChildOf(ancestor)){sourceTransform=ancestor;break;}
+        }
+        var sourceRow=sourceTransform.gameObject;
         hintRoot=UnityEngine.Object.Instantiate(sourceRow,sourceRow.transform.parent);
         hintRoot.name="MoonRadioNativeHint";
         hintRoot.transform.SetSiblingIndex(sourceRow.transform.GetSiblingIndex());
@@ -112,39 +144,94 @@ internal static class RadioRuntime
         var hintRect=hintRoot.GetComponent<RectTransform>();
         if(sourceRect!=null&&hintRect!=null)
             hintRect.anchoredPosition=sourceRect.anchoredPosition+new Vector2(0f,sourceRect.rect.height+8f);
-        var nativeCanvas=sourceRow.GetComponentInParent<Canvas>();
-        if(nativeCanvas!=null)
-            hintRoot.transform.SetParent(nativeCanvas.transform,true);
+        hintUsesNativeParent=true;
         hintRoot.SetActive(true);
         hintLabel=null;hintKey=null;
+        var foundLabel=false;
+        var foundKey=false;
         foreach(var text in hintRoot.GetComponentsInChildren<TMP_Text>(true))
         {
-            if(string.Equals(text.text,"FIELD MANUAL",StringComparison.OrdinalIgnoreCase))
+            if(HudToken(text.text).Contains("FIELDMANUAL",StringComparison.OrdinalIgnoreCase))
             {
-                text.text="RADIO";hintLabel=text;text.raycastTarget=false;
+                text.text="RADIO";hintLabel=text;text.raycastTarget=false;foundLabel=true;
             }
-            else if(string.Equals(text.text,"H",StringComparison.OrdinalIgnoreCase))
+            else if(HudToken(text.text).Equals("H",StringComparison.OrdinalIgnoreCase))
             {
-                text.text="R";hintKey=text;text.raycastTarget=false;
+                text.text="R";hintKey=text;text.raycastTarget=false;foundKey=true;
             }
         }
-        if(hintLabel==null||hintKey==null)
+        foreach(var text in hintRoot.GetComponentsInChildren<UnityEngine.UI.Text>(true))
         {
-            UnityEngine.Object.Destroy(hintRoot);hintRoot=null;return false;
+            if(HudToken(text.text).Contains("FIELDMANUAL",StringComparison.OrdinalIgnoreCase))
+            { text.text="RADIO";foundLabel=true; }
+            else if(HudToken(text.text).Equals("H",StringComparison.OrdinalIgnoreCase))
+            { text.text="R";foundKey=true; }
+        }
+        if(!foundLabel||!foundKey)
+        {
+            UnityEngine.Object.Destroy(hintRoot);hintRoot=null;hintUsesNativeParent=false;return false;
         }
         hintLabelObject=hintRoot;hintKeyObject=hintRoot;
         Plugin.Logger.LogInfo("Radio hint cloned the complete native shortcut row");
         return true;
     }
+    static string HudToken(string value)
+    {
+        value=Regex.Replace(value??"", "<.*?>", "");
+        return new string(value.Where(char.IsLetterOrDigit).ToArray());
+    }
+    static IEnumerable<TMP_Text> ActiveHudTexts()
+    {
+        return Resources.FindObjectsOfTypeAll<TMP_Text>()
+            .Where(text=>text!=null && text.isActiveAndEnabled && text.gameObject.activeInHierarchy);
+    }
+    static IEnumerable<Component> ActiveHudTextComponents()
+    {
+        // The game's IL2CPP UI does not reliably appear in the global
+        // component search. Walk live scene transforms and query the text
+        // component on each object instead.
+        foreach(var transform in UnityEngine.Object.FindObjectsOfType<Transform>())
+        {
+            var tmp=transform.GetComponent<TMP_Text>();
+            if(tmp!=null && tmp.isActiveAndEnabled && tmp.gameObject.activeInHierarchy)yield return tmp;
+            var legacy=transform.GetComponent<UnityEngine.UI.Text>();
+            if(legacy!=null && legacy.isActiveAndEnabled && legacy.gameObject.activeInHierarchy)yield return legacy;
+        }
+    }
+    static string ReadHudText(Component component)
+    {
+        if(component is TMP_Text tmp)return tmp.text??"";
+        if(component is UnityEngine.UI.Text legacy)return legacy.text??"";
+        return "";
+    }
+    static bool RadioKeyPressed(Keyboard keyboard)
+    {
+        var unityPressed=keyboard!=null&&keyboard.rKey.wasPressedThisFrame;
+        var down=(GetAsyncKeyState(0x52)&0x8000)!=0;
+        var pressed=unityPressed || down&&!rWasDown;
+        rWasDown=down;
+        return pressed;
+    }
     static void CreateFallbackHint()
     {
         hintKit=new MoonMenuKit("MoonRadioHint");
         hintRoot=MoonMenuKit.Canvas(null,"MoonRadioHintCanvas",92);
-        hintLabel=hintKit.Label(hintRoot.transform,"RADIO",1625,372,155,34,16,Color.white,false);hintLabel.alignment=TextAlignmentOptions.MidlineRight;hintLabel.raycastTarget=false;
-        var keyRect=hintKit.Rect(hintRoot.transform,"MoonRadioKey",1792,369,38,38);var keyBg=keyRect.gameObject.AddComponent<Image>();keyBg.color=new Color(0.035f,0.025f,0.025f,0.98f);
+        hintLabel=hintKit.Label(hintRoot.transform,"RADIO",0,0,170,38,16,Color.white,false);hintLabel.alignment=TextAlignmentOptions.MidlineRight;hintLabel.raycastTarget=false;
+        var labelRect=hintLabel.rectTransform;
+        // Match the game's right-side shortcut column at the 2560x1440
+        // reference resolution. The fallback must sit above FIELD MANUAL,
+        // not at the canvas top edge.
+        AnchorTopRight(labelRect,new Vector2(-210f,-495f),new Vector2(170f,38f));
+        var keyRect=hintKit.Rect(hintRoot.transform,"MoonRadioKey",0,0,38,38);var keyBg=keyRect.gameObject.AddComponent<Image>();keyBg.color=new Color(0.035f,0.025f,0.025f,0.98f);
+        AnchorTopRight(keyRect,new Vector2(-160f,-493f),new Vector2(38f,38f));
         hintKey=hintKit.Label(keyRect,"R",0,0,38,38,18,Color.white,true);hintKey.alignment=TextAlignmentOptions.Center;hintKey.raycastTarget=false;CopyNativeHudStyle(keyBg);
         hintLabelObject=hintLabel.gameObject;hintKeyObject=keyRect.gameObject;
-        Plugin.Logger.LogWarning("Native HUD controls not found; used fallback radio hint");
+        Plugin.Logger.LogWarning($"Native HUD controls not found; used anchored fallback radio hint at top-right ({Screen.width}x{Screen.height})");
+    }
+    static void AnchorTopRight(RectTransform rect, Vector2 position, Vector2 size)
+    {
+        rect.anchorMin=Vector2.one;rect.anchorMax=Vector2.one;rect.pivot=Vector2.one;
+        rect.sizeDelta=size;rect.anchoredPosition=position;
     }
     static void SetHintActive(bool active)
     {
@@ -170,6 +257,7 @@ internal static class RadioRuntime
         foreach(var s in UnityEngine.Object.FindObjectsOfType<MoonCollector>())
         {
             var installed=s.GetComponentInChildren<MoonRadioStation>();
+            if(s.site==null)continue;
             string stationKey="s:"+s.site.key;
             Add(stationKey,s.site.name,installed!=null&&installed.Speaker!=null?installed.Speaker:s.transform);
         }
@@ -192,7 +280,7 @@ internal static class RadioRuntime
         // when the native action list is present. This keeps the mod in lockstep
         // with the game's typography and rounded key treatment.
         TMP_Text label=null,key=null;
-        foreach(var text in UnityEngine.Object.FindObjectsOfType<TMP_Text>())
+        foreach(var text in ActiveHudTexts())
         {
             if(label==null && string.Equals(text.text,"FIELD MANUAL",StringComparison.OrdinalIgnoreCase))label=text;
             if(key==null && string.Equals(text.text,"H",StringComparison.OrdinalIgnoreCase))key=text;
@@ -247,7 +335,11 @@ internal static class RadioRuntime
         else
         {
             var pos=Walker.transform.position;
-            bool inside=MoonCollectorInteriorGrade.Inside(pos)>0.5f;
+            // InteriorGrade is a soft mask and can be below 0.5 near doors,
+            // especially during scene streaming.  The lower threshold keeps
+            // the radio usable in the station entrance without activating it
+            // across the whole yard.
+            bool inside=MoonCollectorInteriorGrade.Inside(pos)>0.05f;
             if(inside)
                 key=Emitters.Values.Where(e=>e.Key.StartsWith("s:")&&e.Anchor!=null)
                     .OrderBy(e=>Vector3.SqrMagnitude(e.Anchor.position-pos)).FirstOrDefault()?.Key;
@@ -267,7 +359,7 @@ internal static class RadioRuntime
         if(hintRoot!=null)UnityEngine.Object.Destroy(hintRoot);
         hintRoot=null;hintLabelObject=null;hintKeyObject=null;hintLabel=null;hintKey=null;hintKit?.Dispose();hintKit=null;
         foreach(var radio in Emitters.Values)radio.Dispose();
-        Emitters.Clear();Context=null;Walker=null;nextScan=0;described=false;lastContextDiagnostic=null;RadioSync.Reset();RadioSelfTest.Stop();
+        Emitters.Clear();Context=null;Walker=null;nextScan=0;hintFallbackAt=0;rWasDown=false;hintUsesNativeParent=false;described=false;lastContextDiagnostic=null;RadioSync.Reset();RadioSelfTest.Stop();
     }
     [DllImport("user32.dll")]static extern short GetAsyncKeyState(int key);
 }
